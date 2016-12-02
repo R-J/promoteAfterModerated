@@ -4,7 +4,7 @@
 
 <?= $this->Form->open(), $this->Form->errors() ?>
 
-<div class="P"><?= sprintf(t('Are you sure you want to delete the promotion for role "%s"?'), htmlspecialchars($this->data('RoleName'))) ?></div>
+<div class="P"><?= t('Are you sure you want to delete this promotion rule?')) ?></div>
 <div class="Buttons Buttons-Confirm">
 <?= $this->Form->button('OK', ['class' => 'Button Primary']) ?>
 <?= $this->Form->button('Cancel', ['type' => 'button', 'class' => 'Button Close']) ?>

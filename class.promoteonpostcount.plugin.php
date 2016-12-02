@@ -60,6 +60,7 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
      * @return void.
      */
     public function controller_index($sender, $args) {
+        // $sender->addJsFile('promoteonpostcount.js', 'plugins/promoteOnPostCount');
         $sender->permission('Garden.Settings.Manage');
         // Get current promotions.
         $promotions = c('promoteOnPostCount.Rules', []);
@@ -140,8 +141,10 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
             $sender->Form->validateRule('Connector', 'ValidateRequired');
             $sender->Form->validateRule('MinDiscussions', 'ValidateRequired');
             $sender->Form->validateRule('MinDiscussions', 'ValidateInteger');
-            $sender->Form->validateRule('Role', 'ValidateRequired');
-            $sender->Form->validateRule('Role', 'ValidateInteger');
+            $sender->Form->validateRule('FromRoleID', 'ValidateRequired');
+            $sender->Form->validateRule('FromRoleID', 'ValidateInteger');
+            $sender->Form->validateRule('ToRoleID', 'ValidateRequired');
+            $sender->Form->validateRule('ToRoleID', 'ValidateInteger');
 
             if (!$sender->Form->validationResults()) {
                 $formValues = $sender->Form->formValues();
@@ -163,13 +166,10 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
                     sprite('Check', 'InformSprite').t('Your settings have been saved.'),
                     ['CssClass' => 'Dismissable AutoDismiss HasSprite']
                 );
-                redirect($sender->SelfUrl);
+                $this->controller_index($sender);
+                return;
             }
-
         }
-
-
-
         $sender->render($this->getView('addedit.php'));
     }
 
@@ -178,6 +178,19 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
         $sender->setData('Title', t('Delete Promotion'));
         $sender->setData('RoleName', rawurldecode($args[1]));
 
+        if ($sender->Form->authenticatedPostBack() == true && $sender->Form->getValue('OK') == 'OK') {
+            $promotions = c('promoteOnPostCount.Rules', []);
+            if (!is_array($promotions)) {
+                $promotions = unserialize($promotions);
+            }
+            unset($promotions[$args[0]]);
+            saveToConfig('promoteOnPostCount.Rules', serialize($promotions));
+            $sender->informMessage(
+                sprite('Check', 'InformSprite').sprintf(t('Role "%s" has been deleted.'), rawurldecode($args[1])),
+                ['CssClass' => 'Dismissable AutoDismiss HasSprite']
+            );
+            redirectUrl(url('plugin/promoteonpostcount'), 200);
+        }
         $sender->render($this->getView('delete.php'));
     }
 }

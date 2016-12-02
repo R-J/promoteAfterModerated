@@ -7,21 +7,23 @@
             <th><?= t('Min. Comments') ?></th>
             <th><?= t('Connector') ?></th>
             <th><?= t('Min. Discussions') ?></th>
-            <th><?= t('Role') ?></th>
+            <th><?= t('From Role') ?></th>
+            <th><?= t('To Role') ?></th>
             <th><?= t('Options') ?></th>
 
         </tr>
     </thead>
     <tbody>
-        <?php foreach ($this->data('Promotions') as $roleID => $info): ?>
+        <?php foreach ($this->data('Promotions') as $ruleID => $rule): ?>
         <tr>
-            <td><?= $info['MinComments'] ?></td>
-            <td><?= $info['Connector'] ?></td>
-            <td><?= $info['MinDiscussions'] ?></td>
-            <td><?= $this->data('Roles')[$roleID] ?></td>
+            <td><?= $rule['MinComments'] ?></td>
+            <td><?= $rule['Connector'] ?></td>
+            <td><?= $rule['MinDiscussions'] ?></td>
+            <td><?= $rule['FromRoleID'] ?></td>
+            <td><?= $rule['ToRoleID'] ?></td>
             <td>
-                <a href="<?= url('plugin/promoteonpostcount/edit/'.$roleID) ?>" class="Popup SmallButton"><?= t('Edit') ?></a>
-                <a href="<?= url('plugin/promoteonpostcount/delete/'.$roleID.'/'.rawurlencode($this->data('Roles')[$roleID])) ?>" class="Popup SmallButton Delete"><?= t('Delete') ?></a>
+                <a href="<?= url('plugin/promoteonpostcount/edit/'.$ruleID) ?>" class="Popup SmallButton"><?= t('Edit') ?></a>
+                <a href="<?= url('plugin/promoteonpostcount/delete/'.$ruleID) ?>" class="Popup SmallButton Delete"><?= t('Delete') ?></a>
             </td>
         </tr><?php endforeach ?>
     </tbody>
@@ -29,3 +31,10 @@
 <div class="Buttons">
 <a href="<?= url('plugin/promoteonpostcount/add') ?>"class="Popup Button"><?= t('Add Promotion') ?></a>
 </div>
+<script>
+var myFunc = $.popup.close;
+$.popup.close = function () {
+  myFunc.apply(this, arguments); // preserve the arguments
+  location.reload(); 
+};
+</script>

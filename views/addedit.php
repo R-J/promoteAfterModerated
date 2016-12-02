@@ -18,8 +18,12 @@
         <?= $this->Form->textBox('MinDiscussions', ['type' => 'number', 'class' => 'SmallInput']) ?>
     </li>
     <li>
-        <?= $this->Form->label('Role', 'Role') ?>
-        <?= $this->Form->dropDown('Role', $this->data('Roles')) ?>
+        <?= $this->Form->label('From Role', 'FromRoleID') ?>
+        <?= $this->Form->dropDown('FromRoleID', $this->data('Roles')) ?>
+    </li>
+    <li>
+        <?= $this->Form->label('To Role', 'ToRoleID') ?>
+        <?= $this->Form->dropDown('ToRoleID', $this->data('Roles')) ?>
     </li>
 </ul>
 </div>
