@@ -1,6 +1,4 @@
-<?php defined('APPLICATION') or die;
-
-?>
+<?php defined('APPLICATION') or die; ?>
 <h1><?= $this->title() ?></h1>
 <div class="Info"><?= t('PromoteOnPostCount.Info', 'Every user who has the given number of comments/discussions below, will become member of the specified role. In order to prevent fatal errors, this will not work with the default moderator and admin role.') ?></div>
 <table class="AltRows">
@@ -28,6 +26,6 @@
         </tr><?php endforeach ?>
     </tbody>
 </table>
-<div class="P">
-<a href="<?= url('plugin/promoteonpostcount/add') ?>"class="Button"><?= t('Add Promotion') ?></a>
+<div class="Buttons">
+<a href="<?= url('plugin/promoteonpostcount/add') ?>"class="Popup Button"><?= t('Add Promotion') ?></a>
 </div>

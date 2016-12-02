@@ -3,12 +3,7 @@
 <h1><?= $this->title() ?></h1>
 
 <?= $this->Form->open(), $this->Form->errors() ?>
-
-<p>
-        <?= $this->Form->label('Minimum Comments', 'MinComments') ?>
-        <?= $this->Form->textBox('MinComments', ['type' => 'number', 'class' => 'SmallInput']) ?>
-</p>
-
+<div class="FormWrapper FormWrapper-Condensed">
 <ul>
     <li>
         <?= $this->Form->label('Minimum Comments', 'MinComments') ?>
@@ -27,29 +22,9 @@
         <?= $this->Form->dropDown('Role', $this->data('Roles')) ?>
     </li>
 </ul>
+</div>
 
-<?php /*
-<table>
-    <tr>
-        <td><?= t('Minimum Comments') ?></td>
-        <td><?= $this->Form->textBox('MinComments', ['type' => 'number']) ?></td>
-    </tr>
-    <tr>
-        <td><?= t('Connecting Condition') ?></td>
-        <td><?= $this->Form->dropDown('Connector', ['AND' => 'AND', 'OR' => 'OR']) ?></td>
-    </tr>
-    <tr>
-        <td><?= t('Minimum Discussions') ?></td>
-        <td><?= $this->Form->textBox('MinDiscussions', ['type' => 'number']) ?></td>
-    </tr>
-    <tr>
-        <td><?= t('Minimum Discussions') ?></td>
-        <td><?= $this->Form->dropDown('Role', $this->data('Roles')) ?></td>
-    </tr>
-</table>
-*/ ?>
-
-<div class="P">
+<div class="Buttons">
 <?= $this->Form->button('Save') ?>
 </div>
 <?= $this->Form->close() ?>
