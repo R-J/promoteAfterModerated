@@ -8,91 +8,32 @@ $PluginInfo['promoteOnPostCount'] = [
     'HasLocale' => true,
     'Author' => 'Robin Jurinka',
     'AuthorUrl' => 'https://vanillaforums.org/profile/R_J',
-    'SettingsUrl' => '/plugin/promoteonpostcount',
+    'SettingsUrl' => '/settings/promoteonpostcount',
     'License' => 'MIT'
 ];
-/**
- * @package promoteOnPostCount
- * @author Robin Jurinka
- * @license MIT
- */
 class PromoteOnPostCountPlugin extends Gdn_Plugin {
     /**
-     * Add menu item to dashboard.
-     *
-     * @param GardenController $sender Instance of the sendig object.
-     * @param Mixed            $args   Event arguments
+     * Prefill settings with sane settings.
      *
      * @return void.
      */
-    public function base_getAppSettingsMenuItems_handler($sender, $args) {
-        $menu = &$args['SideMenu'];
-        $menu->addLink(
-            'Users',
-            t('Promotions'),
-            'plugin/promoteonpostcount',
-            'Garden.Settings.Manage'
+    public function setup() {
+        touchConfig(
+            'promoteOnPostCount.FromRoleID',
+            RoleModel::getDefaultRoles(RoleModel::TYPE_APPLICANT)
+        );
+        touchConfig(
+            'promoteOnPostCount.ToRoleID',
+            RoleModel::getDefaultRoles(RoleModel::TYPE_MEMBER)
         );
     }
 
-    /**
-     * Dispatcher for plugins functionalities.
-     *
-     * @param PluginController $sender Instance of the calling object.
-     *
-     * @return void.
-     */
-    public function pluginController_promoteOnPostCount_create($sender) {
+    public function settingsController_promoteOnPostCount_create($sender) {
         $sender->permission('Garden.Settings.Manage');
-        $sender->addSideMenu('plugin/promoteonpostcount');
 
-        $sender->Form = new Gdn_Form();
+        $sender->addSideMenu('dashboard/settings/plugins');
 
-        $this->dispatch($sender, $sender->RequestArgs);
-    }
-
-    /**
-     * Show list of promotion rules.
-     *
-     * @param PluginController $sender Instance of the calling object.
-     * @param Mixed            $args   Url parameters.
-     *
-     * @return void.
-     */
-    public function controller_index($sender, $args) {
-        // $sender->addJsFile('promoteonpostcount.js', 'plugins/promoteOnPostCount');
-        $sender->permission('Garden.Settings.Manage');
-        // Get current promotions.
-        $promotions = c('promoteOnPostCount.Rules', []);
-        if (!is_array($promotions)) {
-            $promotions = unserialize($promotions);
-        }
-        $sender->setData('Promotions', $promotions);
-
-        // Get role names.
-        $roleModel = new RoleModel();
-        $sender->setData('Roles', $roleModel->getArray());
-
-        $sender->setData('Title', t('Edit Promotion'));
-
-        $sender->render($this->getView('index.php'));
-    }
-
-    /**
-     * Set title and re-use edit functionality.
-     *
-     * @param PluginController $sender Instance of the calling object.
-     * @param Mixed            $args   Url parameters.
-     *
-     * @return void.
-     */
-    public function controller_add($sender, $args) {
-        $sender->setData('Title', t('Add Promotion'));
-        $this->controller_edit($sender, $args);
-    }
-
-    public function controller_edit($sender, $args) {
-        $sender->permission('Garden.Settings.Manage');
+        $sender->setData('Title', t('Promotion Rule'));
 
         // Get role names.
         $roleModel = new RoleModel();
@@ -106,91 +47,165 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
         foreach ($modRoles as $role) {
             unset($roles[$role->RoleID]);
         }
-        $sender->setData('Roles', $roles);
-        if (count($args) > 0) {
-            $sender->setData('Title', t('Edit Promotion'));
-        }
 
-        // What to do when form is shown for the first time in edit mode.
-        if ($sender->Form->authenticatedPostBack() === false && count($args) > 0) {
-            $promotions = c('promoteOnPostCount.Rules', []);
-            if (!is_array($promotions)) {
-                $promotions = unserialize($promotions);
-            }
-            $sender->Form->setValue(
-                'MinComments',
-                $promotions[$args[0]]['MinComments']
-            );
-            $sender->Form->setValue(
-                'Connector',
-                $promotions[$args[0]]['Connector']
-            );
-            $sender->Form->setValue(
-                'MinDiscussions',
-                $promotions[$args[0]]['MinDiscussions']
-            );
-            $sender->Form->setValue(
-                'Role',
-                $args[0]
-            );
-        }
-        // Process form save.
-        if ($sender->Form->authenticatedPostBack() == true) {
-            $sender->Form->validateRule('MinComments', 'ValidateRequired');
-            $sender->Form->validateRule('MinComments', 'ValidateInteger');
-            $sender->Form->validateRule('Connector', 'ValidateRequired');
-            $sender->Form->validateRule('MinDiscussions', 'ValidateRequired');
-            $sender->Form->validateRule('MinDiscussions', 'ValidateInteger');
-            $sender->Form->validateRule('FromRoleID', 'ValidateRequired');
-            $sender->Form->validateRule('FromRoleID', 'ValidateInteger');
-            $sender->Form->validateRule('ToRoleID', 'ValidateRequired');
-            $sender->Form->validateRule('ToRoleID', 'ValidateInteger');
+        $sender->setData('AvailableRoles', $roles);
 
-            if (!$sender->Form->validationResults()) {
-                $formValues = $sender->Form->formValues();
-                // Get current promotions.
-                $promotions = c('promoteOnPostCount.Rules', []);
-                if (!is_array($promotions)) {
-                    $promotions = unserialize($promotions);
-                }
-                // Add form values.
-                $promotions[$formValues['Role']] = [
-                    'MinComments' => $formValues['MinComments'],
-                    'Connector' => $formValues['Connector'],
-                    'MinDiscussions' => $formValues['MinDiscussions']
-                ];
-                // Save to config.
-                saveToConfig('promoteOnPostCount.Rules', serialize($promotions));
-                // Give feedback.
+        $validation = new Gdn_Validation();
+        $configurationModel = new Gdn_ConfigurationModel($validation);
+        $configurationModel->setField(
+            [
+                'promoteOnPostCount.MinComments',
+                'promoteOnPostCount.Connector',
+                'promoteOnPostCount.MinDiscussions',
+                'promoteOnPostCount.FromRoleID',
+                'promoteOnPostCount.ToRoleID'
+            ]
+        );
+        $sender->Form->setModel($configurationModel);
+
+        if ($sender->Form->authenticatedPostBack() === false) {
+            // If form is displayed "unposted".
+            $sender->Form->setData($configurationModel->Data);
+        } else {
+            // Validate posted form.
+            $sender->Form->validateRule('promoteOnPostCount.MinComments', 'ValidateRequired');
+            $sender->Form->validateRule('promoteOnPostCount.MinComments', 'ValidateInteger');
+            $sender->Form->validateRule('promoteOnPostCount.Connector', 'ValidateRequired');
+            $connector = (object)[];
+            $connector->Enum = ['AND', 'OR'];
+            $sender->Form->validateRule(
+                'promoteOnPostCount.Connector',
+                ['Name' => 'ValidateEnum', 'Args' => $connector]
+            );
+            $sender->Form->validateRule('promoteOnPostCount.MinDiscussions', 'ValidateRequired');
+            $sender->Form->validateRule('promoteOnPostCount.MinDiscussions', 'ValidateInteger');
+            $sender->Form->validateRule('promoteOnPostCount.FromRoleID', 'ValidateRequired');
+            $sender->Form->validateRule('promoteOnPostCount.FromRoleID', 'ValidateInteger');
+            $sender->Form->validateRule('promoteOnPostCount.ToRoleID', 'ValidateRequired');
+            $sender->Form->validateRule('promoteOnPostCount.ToRoleID', 'ValidateInteger');
+
+            // Try saving values.
+            if ($sender->Form->save() !== false) {
                 $sender->informMessage(
                     sprite('Check', 'InformSprite').t('Your settings have been saved.'),
                     ['CssClass' => 'Dismissable AutoDismiss HasSprite']
                 );
-                $this->controller_index($sender);
-                return;
             }
         }
-        $sender->render($this->getView('addedit.php'));
+        $sender->render($this->getView('settings.php'));
     }
 
-    public function controller_delete($sender, $args) {
-        $sender->permission('Garden.Settings.Manage');
-        $sender->setData('Title', t('Delete Promotion'));
-        $sender->setData('RoleName', rawurldecode($args[1]));
+    public function vanillaController_promote_create($sender) {
+        $args = [];
+        $args['CommentData'] = [];
+        $args['CommentData']['InsertUserID'] = '5';
 
-        if ($sender->Form->authenticatedPostBack() == true && $sender->Form->getValue('OK') == 'OK') {
-            $promotions = c('promoteOnPostCount.Rules', []);
-            if (!is_array($promotions)) {
-                $promotions = unserialize($promotions);
-            }
-            unset($promotions[$args[0]]);
-            saveToConfig('promoteOnPostCount.Rules', serialize($promotions));
-            $sender->informMessage(
-                sprite('Check', 'InformSprite').sprintf(t('Role "%s" has been deleted.'), rawurldecode($args[1])),
-                ['CssClass' => 'Dismissable AutoDismiss HasSprite']
-            );
-            redirectUrl(url('plugin/promoteonpostcount'), 200);
+        $this->commentModel_afterSaveComment_handler($sender, $args);
+    }
+
+    /**
+     * Change role if several conditions are met.
+     *
+     * Insert user must have minimum comments and discussions, must be in a
+     * specific role and not already part of the target role.
+     *
+     * @param CommentModel $sender Instance of the calling class.
+     * @param Mixed        $args   Event arguments.
+     *
+     * @return void.
+     */
+    public function commentModel_afterSaveComment_handler($sender, $args) {
+        // Exit if comments shouldn't be checked.
+        $minComments = c('promoteOnPostCount.MinComments', 0);
+        if ($minComments == 0) {
+            return;
         }
-        $sender->render($this->getView('delete.php'));
+        // Get insert user.
+        $user = Gdn::userModel()->getID($args['CommentData']['InsertUserID']);
+        if (!$user) {
+            return;
+        }
+        // Exit if user hasn't the needed number of comments or discussions.
+        $minDiscussions = c('promoteOnPostCount.MinDiscussions', 0);
+        if (
+            $user->CountComments < $minComments ||
+            ($minDiscussions > 0 && $user->CountDiscussions < $minDiscussions)
+        ) {
+            return;
+        }
+        // Exit if user hasn't FromRoleID or already has ToRoleID.
+        $userRoles = array_column(
+            Gdn::userModel()->getRoles($user->UserID)->resultArray(),
+            'RoleID'
+        );
+        if (
+            !in_array(c('promoteOnPostCount.FromRoleID', true), $userRoles) ||
+            in_array(c('promoteOnPostCount.ToRoleID', true), $userRoles)
+        ) {
+             return;
+        }
+        // Everything is fine. Assign new role.
+        Gdn::userModel()->saveRoles($user->UserID, c('promoteOnPostCount.ToRoleID'), true);
+        $this->roleChangeActivity($user);
+    }
+
+    /**
+     * Change role if several conditions are met.
+     *
+     * Insert user must have minimum comments and discussions, must be in a
+     * specific role and not already part of the target role.
+     *
+     * @param DiscussionModel $sender Instance of the calling class.
+     * @param Mixed           $args   Event arguments.
+     *
+     * @return void.
+     */
+    public function discussionModel_afterSaveComment_handler($sender, $args) {
+        // Exit if comments shouldn't be checked.
+        $minDiscussions = c('promoteOnPostCount.MinDiscussions', 0);
+        if ($minDiscussions == 0) {
+            return;
+        }
+        // Get insert user.
+        $user = Gdn::userModel()->getID($args['DiscussionData']['InsertUserID']);
+        if (!$user) {
+            return;
+        }
+        // Exit if user hasn't the needed number of comments or discussions.
+        $minComments = c('promoteOnPostCount.MinComments', 0);
+        if (
+            $user->CountDiscussions < $minDiscussions ||
+            ($minComments > 0 && $user->CountComments < $minComments)
+        ) {
+            return;
+        }
+        // Exit if user hasn't FromRoleID or already has ToRoleID.
+        $userRoles = array_column(
+            Gdn::userModel()->getRoles($user->UserID)->resultArray(),
+            'RoleID'
+        );
+        if (
+            !in_array(c('promoteOnPostCount.FromRoleID', true), $userRoles) ||
+            in_array(c('promoteOnPostCount.ToRoleID', true), $userRoles)
+        ) {
+             return;
+        }
+        // Everything is fine. Assign new role.
+        Gdn::userModel()->saveRoles($user->UserID, c('promoteOnPostCount.ToRoleID'), true);
+        $this->roleChangeActivity($user);
+    }
+
+    private function roleChangeActivity($user) {
+        $activityModel = new ActivityModel();
+        $HeadlineFormat = t('HeadlineFormat.RoleChange', '{ActivityUserID,your} gained more permissions!');
+//        $HeadlineFormat = t('HeadlineFormat.PictureChange.ForUser', '{RegardingUserID,You} changed the profile picture for {ActivityUserID,user}.');
+
+        $activityModel->save([
+            'ActivityUserID' => $user->UserID,
+            // 'RegardingUserID' => Gdn::session()->UserID,
+            'ActivityType' => 'RoleChange',
+            'HeadlineFormat' => $HeadlineFormat
+            // 'Story' => img($PhotoUrl, array('alt' => t('Thumbnail')))
+        ]);
     }
 }
