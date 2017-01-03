@@ -1,33 +1,79 @@
 <?php
 $PluginInfo['promoteOnPostCount'] = [
-    'Name' => 'Promote on Post Count',
-    'Description' => 'Allows role promotion based on post count',
-    'Version' => 'alpha',
+    'Name' => 'Promote After Moderated',
+    'Description' => 'Allows automatic role changing after a given number of post counts have been approved.',
+    'Version' => '0.1',
     'RequiredApplications' => ['Vanilla' => '2.3'],
     'MobileFriendly' => true,
     'HasLocale' => true,
     'Author' => 'Robin Jurinka',
     'AuthorUrl' => 'https://vanillaforums.org/profile/R_J',
-    'SettingsUrl' => '/settings/promoteonpostcount',
+    'SettingsUrl' => '/settings/promoteaftermoderated',
     'License' => 'MIT'
 ];
 class PromoteOnPostCountPlugin extends Gdn_Plugin {
     /**
-     * Prefill settings with sane settings.
+     * Pre-fill settings with sane settings.
      *
      * @return void.
      */
     public function setup() {
         touchConfig(
-            'promoteOnPostCount.FromRoleID',
-            RoleModel::getDefaultRoles(RoleModel::TYPE_APPLICANT)
-        );
-        touchConfig(
             'promoteOnPostCount.ToRoleID',
             RoleModel::getDefaultRoles(RoleModel::TYPE_MEMBER)
         );
+        touchConfig('Preferences.Popup.RolePromotion', 1);
+        $this->structure();
     }
 
+    /**
+     * Create activity type for role promotion.
+     *
+     * @return void.
+     */
+    public function structure() {
+        $activityModel = new ActivityModel();
+        $activityModel->defineType(
+            'RolePromotion',
+            [
+                'Notify' => 1,
+                'Public' => 0
+            ]
+        );
+    }
+
+    /**
+     * Notify user of his role promotion.
+     *
+     * @param Integer $userID ID of the user to notify.
+     * @param Integer $roleID ID of the role the user has been assigned.
+     *
+     * @return void.
+     */
+    private function roleChangeActivity($userID, $roleID) {
+        $activityModel = new ActivityModel();
+        $activityModel->queue(
+            [
+                'ActivityType' => 'RolePromotion',
+                'ActivityUserID' => $userID,
+                'RegardingUserID' => $userID,
+                'NotifyUserID' => $userID,
+                'HeadlineFormat' => t('{NotifyUserID,You} have been promoted.'),
+                'Story' => t('Your posts do no longer require moderation.')
+            ],
+            'RolePromotion',
+            ['Force' => true]
+        );
+        $activityModel->saveQueue();
+    }
+
+    /**
+     * Settings page.
+     *
+     * @param SettingsController $sender Instance of the calling class.
+     *
+     * @return void.
+     */
     public function settingsController_promoteOnPostCount_create($sender) {
         $sender->permission('Garden.Settings.Manage');
 
@@ -47,16 +93,16 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
         foreach ($modRoles as $role) {
             unset($roles[$role->RoleID]);
         }
-
         $sender->setData('AvailableRoles', $roles);
 
+        // Prepare form fields.
         $validation = new Gdn_Validation();
         $configurationModel = new Gdn_ConfigurationModel($validation);
         $configurationModel->setField(
             [
                 'promoteOnPostCount.MinComments',
-                'promoteOnPostCount.Connector',
                 'promoteOnPostCount.MinDiscussions',
+                'promoteOnPostCount.MinPosts',
                 'promoteOnPostCount.FromRoleID',
                 'promoteOnPostCount.ToRoleID'
             ]
@@ -68,22 +114,33 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
             $sender->Form->setData($configurationModel->Data);
         } else {
             // Validate posted form.
-            $sender->Form->validateRule('promoteOnPostCount.MinComments', 'ValidateRequired');
-            $sender->Form->validateRule('promoteOnPostCount.MinComments', 'ValidateInteger');
-            $sender->Form->validateRule('promoteOnPostCount.Connector', 'ValidateRequired');
-            $connector = (object)[];
-            $connector->Enum = ['AND', 'OR'];
-            $sender->Form->validateRule(
-                'promoteOnPostCount.Connector',
-                ['Name' => 'ValidateEnum', 'Args' => $connector]
-            );
-            $sender->Form->validateRule('promoteOnPostCount.MinDiscussions', 'ValidateRequired');
-            $sender->Form->validateRule('promoteOnPostCount.MinDiscussions', 'ValidateInteger');
-            $sender->Form->validateRule('promoteOnPostCount.FromRoleID', 'ValidateRequired');
-            $sender->Form->validateRule('promoteOnPostCount.FromRoleID', 'ValidateInteger');
             $sender->Form->validateRule('promoteOnPostCount.ToRoleID', 'ValidateRequired');
             $sender->Form->validateRule('promoteOnPostCount.ToRoleID', 'ValidateInteger');
+            $sender->Form->validateRule('promoteOnPostCount.FromRoleID', 'ValidateRequired');
+            $sender->Form->validateRule('promoteOnPostCount.FromRoleID', 'ValidateInteger');
+            $sender->Form->validateRule('promoteOnPostCount.MinComments', 'ValidateRequired');
+            $sender->Form->validateRule('promoteOnPostCount.MinComments', 'ValidateInteger');
+            $sender->Form->validateRule('promoteOnPostCount.MinDiscussions', 'ValidateRequired');
+            $sender->Form->validateRule('promoteOnPostCount.MinDiscussions', 'ValidateInteger');
+            $sender->Form->validateRule('promoteOnPostCount.MinPosts', 'ValidateRequired');
+            $sender->Form->validateRule('promoteOnPostCount.MinPosts', 'ValidateInteger');
 
+            // Check if either comment/discussion or post is set, but not both.
+            if ($sender->Form->getValue('promoteOnPostCount.MinPosts', 0) != 0) {
+                if (
+                    $sender->Form->getValue('promoteOnPostCount.MinComments', 0) +
+                    $sender->Form->getValue('promoteOnPostCount.MinDiscussions', 0) > 0
+                ) {
+                    $sender->Form->addError('Please set either min. comment/discussion count or post count, but not both.');
+                }
+            }
+
+            // Ensure that new role doesn't need moderation.
+            $roleModel = new RoleModel();
+            $permissions = $roleModel->getPermissions($sender->Form->getValue('promoteOnPostCount.ToRoleID'));
+            if ($permissions[0]['Vanilla.Approval.Require'] == true) {
+                $sender->Form->addError('This role hasn\'t permission to post unmoderated. Choosing this role doesn\'t make sense', 'promoteOnPostCount.ToRoleID');
+            }
             // Try saving values.
             if ($sender->Form->save() !== false) {
                 $sender->informMessage(
@@ -95,117 +152,89 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
         $sender->render($this->getView('settings.php'));
     }
 
-    public function vanillaController_promote_create($sender) {
-        $args = [];
-        $args['CommentData'] = [];
-        $args['CommentData']['InsertUserID'] = '5';
-
-        $this->commentModel_afterSaveComment_handler($sender, $args);
-    }
-
     /**
-     * Change role if several conditions are met.
+     * Check if log entry is pending post and level up user.
      *
-     * Insert user must have minimum comments and discussions, must be in a
-     * specific role and not already part of the target role.
-     *
-     * @param CommentModel $sender Instance of the calling class.
-     * @param Mixed        $args   Event arguments.
+     * @param LogModel $sender Instance of the calling class.
+     * @param mixed    $args   Event arguments.
      *
      * @return void.
      */
-    public function commentModel_afterSaveComment_handler($sender, $args) {
-        // Exit if comments shouldn't be checked.
-        $minComments = c('promoteOnPostCount.MinComments', 0);
-        if ($minComments == 0) {
-            return;
-        }
-        // Get insert user.
-        $user = Gdn::userModel()->getID($args['CommentData']['InsertUserID']);
-        if (!$user) {
-            return;
-        }
-        // Exit if user hasn't the needed number of comments or discussions.
-        $minDiscussions = c('promoteOnPostCount.MinDiscussions', 0);
+    public function logModel_afterRestore_handler($sender, $args) {
+        // Only take action for pending posts.
         if (
-            $user->CountComments < $minComments ||
-            ($minDiscussions > 0 && $user->CountDiscussions < $minDiscussions)
+            $args['Log']['Operation'] != 'Pending' ||
+            !in_array($args['Log']['RecordType'], ['Comment', 'Discussion'])
         ) {
             return;
         }
-        // Exit if user hasn't FromRoleID or already has ToRoleID.
-        $userRoles = array_column(
-            Gdn::userModel()->getRoles($user->UserID)->resultArray(),
-            'RoleID'
+
+        // Make sure plugin is configured.
+        $config = c('promoteOnPostCount');
+        $minComments = c('promoteOnPostCount.MinComments', false);
+        $minDiscussions = c('promoteOnPostCount.MinDiscussions', false);
+        $minPosts = c('promoteOnPostCount.MinPosts', false);
+        $fromRoleID = c('promoteOnPostCount.FromRoleID', false);
+        $roleID = c('promoteOnPostCount.ToRoleID', false);
+        // All settings must be set.
+        if (
+            $minComments === false ||
+            $minDiscussions === false ||
+            $minPosts === false ||
+            $roleID === false
+        ) {
+            return;
+        }
+        // At least one Minimum must be set.
+        if ($minComments +  $minDiscussions + $minPosts == 0) {
+            return;
+        }
+
+        // Get the current users post counts.
+        $countComments = Gdn::sql()->getCount(
+            'Comment',
+            ['InsertUserID' => $args['Log']['InsertUserID']]
         );
-        if (
-            !in_array(c('promoteOnPostCount.FromRoleID', true), $userRoles) ||
-            in_array(c('promoteOnPostCount.ToRoleID', true), $userRoles)
-        ) {
-             return;
-        }
-        // Everything is fine. Assign new role.
-        Gdn::userModel()->saveRoles($user->UserID, c('promoteOnPostCount.ToRoleID'), true);
-        $this->roleChangeActivity($user);
-    }
-
-    /**
-     * Change role if several conditions are met.
-     *
-     * Insert user must have minimum comments and discussions, must be in a
-     * specific role and not already part of the target role.
-     *
-     * @param DiscussionModel $sender Instance of the calling class.
-     * @param Mixed           $args   Event arguments.
-     *
-     * @return void.
-     */
-    public function discussionModel_afterSaveComment_handler($sender, $args) {
-        // Exit if comments shouldn't be checked.
-        $minDiscussions = c('promoteOnPostCount.MinDiscussions', 0);
-        if ($minDiscussions == 0) {
-            return;
-        }
-        // Get insert user.
-        $user = Gdn::userModel()->getID($args['DiscussionData']['InsertUserID']);
-        if (!$user) {
-            return;
-        }
-        // Exit if user hasn't the needed number of comments or discussions.
-        $minComments = c('promoteOnPostCount.MinComments', 0);
-        if (
-            $user->CountDiscussions < $minDiscussions ||
-            ($minComments > 0 && $user->CountComments < $minComments)
-        ) {
-            return;
-        }
-        // Exit if user hasn't FromRoleID or already has ToRoleID.
-        $userRoles = array_column(
-            Gdn::userModel()->getRoles($user->UserID)->resultArray(),
-            'RoleID'
+        $countDiscussions = Gdn::sql()->getCount(
+            'Discussion',
+            ['InsertUserID' => $args['Log']['InsertUserID']]
         );
+
+        // Check if either comment and discussion count is reached
+        // or post count is reached.
         if (
-            !in_array(c('promoteOnPostCount.FromRoleID', true), $userRoles) ||
-            in_array(c('promoteOnPostCount.ToRoleID', true), $userRoles)
+            !($countComments >= $minComments && $countDiscussions >= $minDiscussions) &&
+            !($countComments + $countDiscussions >= $minPosts)
         ) {
-             return;
+            return;
         }
-        // Everything is fine. Assign new role.
-        Gdn::userModel()->saveRoles($user->UserID, c('promoteOnPostCount.ToRoleID'), true);
-        $this->roleChangeActivity($user);
-    }
 
-    private function roleChangeActivity($user) {
-        $activityModel = new ActivityModel();
-        $HeadlineFormat = t('HeadlineFormat.RoleChange', '{ActivityUserID,your} gained more permissions!');
-//        $HeadlineFormat = t('HeadlineFormat.PictureChange.ForUser', '{RegardingUserID,You} changed the profile picture for {ActivityUserID,user}.');
+        // Get all current roles.
+        $currentRoles = Gdn::userModel()->getRoles(
+            $args['Log']['InsertUserID']
+        )->resultArray();
+        $newRoles = array_column($currentRoles, 'RoleID');
 
-        $activityModel->save([
-            'ActivityUserID' => $user->UserID,
-            // 'RegardingUserID' => Gdn::session()->UserID,
-            'ActivityType' => 'RoleChange',
-            'HeadlineFormat' => $HeadlineFormat
-            // 'Story' => img($PhotoUrl, array('alt' => t('Thumbnail')))
-        ]);
+        // Ensure user has FromRoleID.
+        if (!in_array($fromRoleID, $newRoles)) {
+            return;
+        }
+        // Remove old role.
+        $newRoles = array_diff($newRoles, [$fromRoleID]);
+
+        // Add the new role.
+        $newRoles[] = $roleID;
+
+        // Level up!
+        Gdn::userModel()->saveRoles(
+            $args['Log']['InsertUserID'],
+            $newRoles,
+            true
+        );
+        $this->roleChangeActivity($args['Log']['InsertUserID'], $roleID);
+
+        // Give feedback to admin.
+        $user = Gdn::userModel()->getID($userID);
+        Gdn::controller()->informMessage(sprintf(t('%1$s has been promoted and his/her posts will no longer need moderation'), $user->Name));
     }
 }

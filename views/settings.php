@@ -1,33 +1,45 @@
 <?php defined('APPLICATION') or die; ?>
-
+<style>
+fieldset{
+    border:1px solid #CCCCCC;
+    width:580px;
+    padding:5px;
+    margin-bottom:6px;
+}
+</style>
 <h1><?= $this->title() ?></h1>
-<div class="Info"><?= t('If discussion or comment count is not relevant, please set them to zero. If both are zero, rule is not active (what rule should that be anyway)') ?></div>
+<div class="Info"><?= t('If discussion, comment or post count is not relevant, please set them to zero.<br />Promotion is done when a post gets approved. So this plugin is only useful for roles which require approval.') ?></div>
+<div class="Warning"><?= t('<strong>Either</strong> comment/discussion count should be set <strong>or</strong> post count.') ?></div>
 <?= $this->Form->open(), $this->Form->errors() ?>
 <div class="FormWrapper FormWrapper-Condensed">
 <ul>
     <li>
-        <?= $this->Form->label('Minimum Comments', 'promoteOnPostCount.MinComments') ?>
-        <?= $this->Form->textBox('promoteOnPostCount.MinComments', ['type' => 'number', 'class' => 'SmallInput']) ?>
+        <fieldset>
+            <legend><?= t('Roles') ?></legend>
+            <?= $this->Form->label('The role a user will be promoted to', 'promoteOnPostCount.ToRoleID') ?>
+            <?= $this->Form->dropDown('promoteOnPostCount.ToRoleID', $this->data('AvailableRoles')) ?>
+            <?= $this->Form->label('The role that should be revoked', 'promoteOnPostCount.FromRoleID') ?>
+            <?= $this->Form->dropDown('promoteOnPostCount.FromRoleID', $this->data('AvailableRoles')) ?>
+        </fieldset>
     </li>
     <li>
-        <?= $this->Form->label('Connecting Condition', 'promoteOnPostCount.Connector') ?>
-        <?= $this->Form->dropDown('promoteOnPostCount.Connector', ['AND' => 'AND', 'OR' => 'OR']) ?>
+        <fieldset>
+            <legend><?= t('Either Comment and Discussion') ?></legend>
+            <?= $this->Form->label('Minimum Comments', 'promoteOnPostCount.MinComments') ?>
+            <?= $this->Form->textBox('promoteOnPostCount.MinComments', ['type' => 'number', 'class' => 'SmallInput']) ?>
+            <?= $this->Form->label('Minimum Discussions', 'promoteOnPostCount.MinDiscussions') ?>
+            <?= $this->Form->textBox('promoteOnPostCount.MinDiscussions', ['type' => 'number', 'class' => 'SmallInput']) ?>
+        </fieldset>
     </li>
     <li>
-        <?= $this->Form->label('Minimum Discussions', 'promoteOnPostCount.MinDiscussions') ?>
-        <?= $this->Form->textBox('promoteOnPostCount.MinDiscussions', ['type' => 'number', 'class' => 'SmallInput']) ?>
-    </li>
-    <li>
-        <?= $this->Form->label('From Role', 'promoteOnPostCount.FromRoleID') ?>
-        <?= $this->Form->dropDown('promoteOnPostCount.FromRoleID', $this->data('AvailableRoles')) ?>
-    </li>
-    <li>
-        <?= $this->Form->label('To Role', 'promoteOnPostCount.ToRoleID') ?>
-        <?= $this->Form->dropDown('promoteOnPostCount.ToRoleID', $this->data('AvailableRoles')) ?>
+        <fieldset>
+            <legend><?= t('Or Posts in general') ?></legend>
+            <?= $this->Form->label('Minimum Posts', 'promoteOnPostCount.MinPosts') ?>
+            <?= $this->Form->textBox('promoteOnPostCount.MinPosts', ['type' => 'number', 'class' => 'SmallInput']) ?>
+        </fieldset>
     </li>
 </ul>
 </div>
-
 <div class="Buttons">
 <?= $this->Form->button('Save') ?>
 </div>
