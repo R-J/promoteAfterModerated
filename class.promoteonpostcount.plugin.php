@@ -8,7 +8,7 @@ $PluginInfo['promoteOnPostCount'] = [
     'HasLocale' => true,
     'Author' => 'Robin Jurinka',
     'AuthorUrl' => 'https://vanillaforums.org/profile/R_J',
-    'SettingsUrl' => '/settings/promoteaftermoderated',
+    'SettingsUrl' => '/settings/promoteonpostcount',
     'License' => 'MIT'
 ];
 class PromoteOnPostCountPlugin extends Gdn_Plugin {
