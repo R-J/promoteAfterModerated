@@ -1,17 +1,26 @@
 <?php
-$PluginInfo['promoteOnPostCount'] = [
+
+$PluginInfo['promoteAfterModerated'] = [
     'Name' => 'Promote After Moderated',
-    'Description' => 'Allows automatic role changing after a given number of post counts have been approved.',
+    'Description' => 'Allows automatic role changing after a given number of posts have been approved.',
     'Version' => '0.1',
     'RequiredApplications' => ['Vanilla' => '2.3'],
     'MobileFriendly' => true,
     'HasLocale' => true,
     'Author' => 'Robin Jurinka',
     'AuthorUrl' => 'https://vanillaforums.org/profile/R_J',
-    'SettingsUrl' => '/settings/promoteonpostcount',
+    'SettingsUrl' => '/settings/promoteaftermoderated',
     'License' => 'MIT'
 ];
-class PromoteOnPostCountPlugin extends Gdn_Plugin {
+
+/**
+ * Plugin that allows automatic role promotion after X moderated posts.
+ *
+ * Admin can set a number for moderated comments and/or discussions after which
+ * a user will be promoted. The role that should be revoked and the role that
+ * will be given can be configured.
+ */
+class PromoteAfterModeratedPlugin extends Gdn_Plugin {
     /**
      * Pre-fill settings with sane settings.
      *
@@ -19,7 +28,7 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
      */
     public function setup() {
         touchConfig(
-            'promoteOnPostCount.ToRoleID',
+            'promoteAfterModerated.ToRoleID',
             RoleModel::getDefaultRoles(RoleModel::TYPE_MEMBER)
         );
         touchConfig('Preferences.Popup.RolePromotion', 1);
@@ -74,7 +83,7 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
      *
      * @return void.
      */
-    public function settingsController_promoteOnPostCount_create($sender) {
+    public function settingsController_promoteAfterModerated_create($sender) {
         $sender->permission('Garden.Settings.Manage');
 
         $sender->addSideMenu('dashboard/settings/plugins');
@@ -100,11 +109,11 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
         $configurationModel = new Gdn_ConfigurationModel($validation);
         $configurationModel->setField(
             [
-                'promoteOnPostCount.MinComments',
-                'promoteOnPostCount.MinDiscussions',
-                'promoteOnPostCount.MinPosts',
-                'promoteOnPostCount.FromRoleID',
-                'promoteOnPostCount.ToRoleID'
+                'promoteAfterModerated.MinComments',
+                'promoteAfterModerated.MinDiscussions',
+                'promoteAfterModerated.MinPosts',
+                'promoteAfterModerated.FromRoleID',
+                'promoteAfterModerated.ToRoleID'
             ]
         );
         $sender->Form->setModel($configurationModel);
@@ -114,22 +123,22 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
             $sender->Form->setData($configurationModel->Data);
         } else {
             // Validate posted form.
-            $sender->Form->validateRule('promoteOnPostCount.ToRoleID', 'ValidateRequired');
-            $sender->Form->validateRule('promoteOnPostCount.ToRoleID', 'ValidateInteger');
-            $sender->Form->validateRule('promoteOnPostCount.FromRoleID', 'ValidateRequired');
-            $sender->Form->validateRule('promoteOnPostCount.FromRoleID', 'ValidateInteger');
-            $sender->Form->validateRule('promoteOnPostCount.MinComments', 'ValidateRequired');
-            $sender->Form->validateRule('promoteOnPostCount.MinComments', 'ValidateInteger');
-            $sender->Form->validateRule('promoteOnPostCount.MinDiscussions', 'ValidateRequired');
-            $sender->Form->validateRule('promoteOnPostCount.MinDiscussions', 'ValidateInteger');
-            $sender->Form->validateRule('promoteOnPostCount.MinPosts', 'ValidateRequired');
-            $sender->Form->validateRule('promoteOnPostCount.MinPosts', 'ValidateInteger');
+            $sender->Form->validateRule('promoteAfterModerated.ToRoleID', 'ValidateRequired');
+            $sender->Form->validateRule('promoteAfterModerated.ToRoleID', 'ValidateInteger');
+            $sender->Form->validateRule('promoteAfterModerated.FromRoleID', 'ValidateRequired');
+            $sender->Form->validateRule('promoteAfterModerated.FromRoleID', 'ValidateInteger');
+            $sender->Form->validateRule('promoteAfterModerated.MinComments', 'ValidateRequired');
+            $sender->Form->validateRule('promoteAfterModerated.MinComments', 'ValidateInteger');
+            $sender->Form->validateRule('promoteAfterModerated.MinDiscussions', 'ValidateRequired');
+            $sender->Form->validateRule('promoteAfterModerated.MinDiscussions', 'ValidateInteger');
+            $sender->Form->validateRule('promoteAfterModerated.MinPosts', 'ValidateRequired');
+            $sender->Form->validateRule('promoteAfterModerated.MinPosts', 'ValidateInteger');
 
             // Check if either comment/discussion or post is set, but not both.
-            if ($sender->Form->getValue('promoteOnPostCount.MinPosts', 0) != 0) {
+            if ($sender->Form->getValue('promoteAfterModerated.MinPosts', 0) != 0) {
                 if (
-                    $sender->Form->getValue('promoteOnPostCount.MinComments', 0) +
-                    $sender->Form->getValue('promoteOnPostCount.MinDiscussions', 0) > 0
+                    $sender->Form->getValue('promoteAfterModerated.MinComments', 0) +
+                    $sender->Form->getValue('promoteAfterModerated.MinDiscussions', 0) > 0
                 ) {
                     $sender->Form->addError('Please set either min. comment/discussion count or post count, but not both.');
                 }
@@ -137,9 +146,9 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
 
             // Ensure that new role doesn't need moderation.
             $roleModel = new RoleModel();
-            $permissions = $roleModel->getPermissions($sender->Form->getValue('promoteOnPostCount.ToRoleID'));
+            $permissions = $roleModel->getPermissions($sender->Form->getValue('promoteAfterModerated.ToRoleID'));
             if ($permissions[0]['Vanilla.Approval.Require'] == true) {
-                $sender->Form->addError('This role hasn\'t permission to post unmoderated. Choosing this role doesn\'t make sense', 'promoteOnPostCount.ToRoleID');
+                $sender->Form->addError('This role hasn\'t permission to post unmoderated. Choosing this role doesn\'t make sense', 'promoteAfterModerated.ToRoleID');
             }
             // Try saving values.
             if ($sender->Form->save() !== false) {
@@ -170,12 +179,12 @@ class PromoteOnPostCountPlugin extends Gdn_Plugin {
         }
 
         // Make sure plugin is configured.
-        $config = c('promoteOnPostCount');
-        $minComments = c('promoteOnPostCount.MinComments', false);
-        $minDiscussions = c('promoteOnPostCount.MinDiscussions', false);
-        $minPosts = c('promoteOnPostCount.MinPosts', false);
-        $fromRoleID = c('promoteOnPostCount.FromRoleID', false);
-        $roleID = c('promoteOnPostCount.ToRoleID', false);
+        $config = c('promoteAfterModerated');
+        $minComments = c('promoteAfterModerated.MinComments', false);
+        $minDiscussions = c('promoteAfterModerated.MinDiscussions', false);
+        $minPosts = c('promoteAfterModerated.MinPosts', false);
+        $fromRoleID = c('promoteAfterModerated.FromRoleID', false);
+        $roleID = c('promoteAfterModerated.ToRoleID', false);
         // All settings must be set.
         if (
             $minComments === false ||
