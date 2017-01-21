@@ -16,26 +16,26 @@ fieldset{
     <li>
         <fieldset>
             <legend><?= t('Roles') ?></legend>
-            <?= $this->Form->label('The role a user will be promoted to', 'promoteOnPostCount.ToRoleID') ?>
-            <?= $this->Form->dropDown('promoteOnPostCount.ToRoleID', $this->data('AvailableRoles')) ?>
-            <?= $this->Form->label('The role that should be revoked', 'promoteOnPostCount.FromRoleID') ?>
-            <?= $this->Form->dropDown('promoteOnPostCount.FromRoleID', $this->data('AvailableRoles')) ?>
+            <?= $this->Form->label('The role a user will be promoted to', 'promoteAfterModerated.ToRoleID') ?>
+            <?= $this->Form->dropDown('promoteAfterModerated.ToRoleID', $this->data('AvailableRoles')) ?>
+            <?= $this->Form->label('The role that should be revoked', 'promoteAfterModerated.FromRoleID') ?>
+            <?= $this->Form->dropDown('promoteAfterModerated.FromRoleID', $this->data('AvailableRoles')) ?>
         </fieldset>
     </li>
     <li>
         <fieldset>
             <legend><?= t('Either Comment and Discussion') ?></legend>
-            <?= $this->Form->label('Minimum Comments', 'promoteOnPostCount.MinComments') ?>
-            <?= $this->Form->textBox('promoteOnPostCount.MinComments', ['type' => 'number', 'class' => 'SmallInput']) ?>
-            <?= $this->Form->label('Minimum Discussions', 'promoteOnPostCount.MinDiscussions') ?>
-            <?= $this->Form->textBox('promoteOnPostCount.MinDiscussions', ['type' => 'number', 'class' => 'SmallInput']) ?>
+            <?= $this->Form->label('Minimum Comments', 'promoteAfterModerated.MinComments') ?>
+            <?= $this->Form->textBox('promoteAfterModerated.MinComments', ['type' => 'number', 'class' => 'SmallInput']) ?>
+            <?= $this->Form->label('Minimum Discussions', 'promoteAfterModerated.MinDiscussions') ?>
+            <?= $this->Form->textBox('promoteAfterModerated.MinDiscussions', ['type' => 'number', 'class' => 'SmallInput']) ?>
         </fieldset>
     </li>
     <li>
         <fieldset>
             <legend><?= t('Or Posts in general') ?></legend>
-            <?= $this->Form->label('Minimum Posts', 'promoteOnPostCount.MinPosts') ?>
-            <?= $this->Form->textBox('promoteOnPostCount.MinPosts', ['type' => 'number', 'class' => 'SmallInput']) ?>
+            <?= $this->Form->label('Minimum Posts', 'promoteAfterModerated.MinPosts') ?>
+            <?= $this->Form->textBox('promoteAfterModerated.MinPosts', ['type' => 'number', 'class' => 'SmallInput']) ?>
         </fieldset>
     </li>
 </ul>

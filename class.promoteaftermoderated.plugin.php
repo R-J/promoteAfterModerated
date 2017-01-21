@@ -3,7 +3,7 @@
 $PluginInfo['promoteAfterModerated'] = [
     'Name' => 'Promote After Moderated',
     'Description' => 'Allows automatic role changing after a given number of posts have been approved.',
-    'Version' => '0.1',
+    'Version' => '0.2',
     'RequiredApplications' => ['Vanilla' => '2.3'],
     'MobileFriendly' => true,
     'HasLocale' => true,
