@@ -3,12 +3,12 @@
 $PluginInfo['promoteAfterModerated'] = [
     'Name' => 'Promote After Moderated',
     'Description' => 'Allows automatic role changing after a given number of posts have been approved.',
-    'Version' => '0.2',
+    'Version' => '0.3',
     'RequiredApplications' => ['Vanilla' => '2.3'],
     'MobileFriendly' => true,
     'HasLocale' => true,
     'Author' => 'Robin Jurinka',
-    'AuthorUrl' => 'https://vanillaforums.org/profile/R_J',
+    'AuthorUrl' => 'https://vanillaforums.org/profile/r_j',
     'SettingsUrl' => '/settings/promoteaftermoderated',
     'License' => 'MIT'
 ];
@@ -194,10 +194,6 @@ class PromoteAfterModeratedPlugin extends Gdn_Plugin {
         ) {
             return;
         }
-        // At least one Minimum must be set.
-        if ($minComments +  $minDiscussions + $minPosts == 0) {
-            return;
-        }
 
         // Get the current users post counts.
         $countComments = Gdn::sql()->getCount(
@@ -209,12 +205,18 @@ class PromoteAfterModeratedPlugin extends Gdn_Plugin {
             ['InsertUserID' => $args['Log']['InsertUserID']]
         );
 
-        // Check if either comment and discussion count is reached
-        // or post count is reached.
-        if (
-            !($countComments >= $minComments && $countDiscussions >= $minDiscussions) &&
-            !($countComments + $countDiscussions >= $minPosts)
-        ) {
+        if ($minPosts > 0) {
+            if ($countComments + $countDiscussions < $minPosts) {
+                // Break if check for posts but not enough yet.
+                return;
+            }
+        } elseif ($minComments > 0 || $minDiscussions > 0) {
+            if ($countComments < $minComments || $countDiscussions < $minDiscussions) {
+                // Break if comment and discussion check but not enough yet.
+                return;
+            }
+        } else {
+            // If not configured properly, break anyway.
             return;
         }
 
