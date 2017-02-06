@@ -158,7 +158,7 @@ class PromoteAfterModeratedPlugin extends Gdn_Plugin {
                 );
             }
         }
-        $sender->render($this->getView('settings_2.3.php'));
+        $sender->render($this->getView('settings.php'));
     }
 
     /**

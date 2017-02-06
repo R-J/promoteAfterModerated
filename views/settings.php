@@ -1,7 +1,11 @@
 <?php defined('APPLICATION') or die; ?>
 <h1><?= $this->title() ?></h1>
 
-<?= helpAsset(t('Hint'), t('Promotion is done when a post gets approved. So this plugin is only useful for roles which require approval.')) ?>
+<?php
+// function helpAsset is introduced in Vanilla 2.4 and must be commented out
+// unless plugin requirements are raised to Vanilla 2.4.
+// helpAsset(t('Hint'), t('Promotion is done when a post gets approved. So this plugin is only useful for roles which require approval.'))
+?>
 
 <?= $this->Form->open(), $this->Form->errors() ?>
 
