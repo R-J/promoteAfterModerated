@@ -3,7 +3,7 @@
 $PluginInfo['promoteAfterModerated'] = [
     'Name' => 'Promote After Moderated',
     'Description' => 'Allows automatic role changing after a given number of posts have been approved.',
-    'Version' => '0.3',
+    'Version' => '0.4',
     'RequiredApplications' => ['Vanilla' => '2.3'],
     'MobileFriendly' => true,
     'HasLocale' => true,
@@ -158,7 +158,7 @@ class PromoteAfterModeratedPlugin extends Gdn_Plugin {
                 );
             }
         }
-        $sender->render($this->getView('settings.php'));
+        $sender->render($this->getView('settings_2.3.php'));
     }
 
     /**
